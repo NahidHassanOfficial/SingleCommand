@@ -238,5 +238,6 @@ fi
 
 echo "Installation complete!"
 echo "PHP Version: ${PHP_VERSION}"
+echo "Node.js Version: ${NODE_VERSION}"
 echo "MySQL User: ${MYSQL_USER}"
 echo "Database Name: ${DB_NAME}"
