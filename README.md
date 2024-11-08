@@ -4,14 +4,14 @@
 ## LAMP stack
 
 ### Prerequisites
-[ ] Ubuntu 22.04 LTS
-[ ] sudo access
-[ ] Domain name (optional)
-[ ] SSL certificate (optional)
-[ ] Add A record in your DNS (required if you have a domain name and want to get an SSL certificate)
-[ ] Internet connection
-[ ] 5 minutes of your time
-[ ] A cup of coffee
+- [x] Ubuntu 22.04 LTS
+- [x] sudo access
+- [ ] Domain name (optional)
+- [ ] SSL certificate (optional)
+- [ ] Add A record in your DNS (required if you have a domain name and want to get an SSL certificate)
+- [ ] Internet connection
+- [ ] 5 minutes of your time
+- [ ] A cup of coffee
 
 ### Note: This script is tested on Ubuntu 22.04 LTS
 
