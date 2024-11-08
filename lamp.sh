@@ -28,7 +28,7 @@ select_php_version() {
     echo "4) PHP 8.2"
     echo "5) PHP 8.3"
     echo "6) PHP 8.4"
-    read -p "Select PHP version (1-4): " php_choice
+    read -p "Select PHP version (1-6): " php_choice
     
     case $php_choice in
         1) PHP_VERSION="7.4" ;;
