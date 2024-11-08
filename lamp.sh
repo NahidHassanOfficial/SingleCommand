@@ -111,10 +111,28 @@ HASH=$(curl -sS https://composer.github.io/installer.sig)
 php -r "if (hash_file('SHA384', '/tmp/composer-setup.php') === '$HASH') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"
 sudo php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
 
+# Function to select Node.js version
+select_node_version() {
+    echo "Available Node.js versions:"
+    echo "1) Node.js 16.x (LTS)"
+    echo "2) Node.js 18.x (LTS)"
+    echo "3) Node.js 20.x (Current)"
+    read -p "Select Node.js version (1-3): " node_choice
+    
+    case $node_choice in
+        1) NODE_VERSION="16" ;;
+        2) NODE_VERSION="18" ;;
+        3) NODE_VERSION="20" ;;
+        *) error_exit "Invalid Node.js version selected" ;;
+    esac
+    echo "Selected Node.js version: $NODE_VERSION"
+}
+
 # Install Node.js
 echo "Installing Node.js..."
+select_node_version
 cd ~
-curl -sL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh
+curl -sL https://deb.nodesource.com/setup_${NODE_VERSION}.x -o nodesource_setup.sh
 sudo bash nodesource_setup.sh
 sudo apt install -y nodejs
 
@@ -122,6 +140,93 @@ sudo apt install -y nodejs
 if confirm "Do you want to install Yarn?"; then
     echo "Installing Yarn..."
     npm install --global yarn
+fi
+
+# Install PM2 (optional)
+if confirm "Do you want to install PM2?"; then
+    echo "Installing PM2..."
+    sudo npm install --global pm2
+fi
+
+# Get project details
+read -p "Enter GitHub repository URL: " REPO_URL
+
+# Navigate to web root
+cd /var/www/html
+
+# Clone the repository
+echo "Cloning repository..."
+sudo git clone "$REPO_URL" || error_exit "Failed to clone repository"
+
+# Get the repository name from URL and cd into it
+REPO_NAME=$(basename "$REPO_URL" .git)
+cd "$REPO_NAME"
+
+# Set proper permissions
+sudo chown -R www-data:www-data /var/www/html/"$REPO_NAME"
+sudo chmod -R 755 /var/www/html/"$REPO_NAME"
+
+# Install dependencies with Composer
+echo "Installing Composer dependencies..."
+sudo -u www-data composer install || error_exit "Failed to install Composer dependencies"
+
+# Setup environment file
+echo "Setting up environment file..."
+sudo cp .env.example .env || error_exit "Failed to create .env file"
+
+# Generate application key
+sudo php artisan key:generate || error_exit "Failed to generate application key"
+
+# Update database credentials in .env
+sudo sed -i "s/DB_DATABASE=.*/DB_DATABASE=${DB_NAME}/" .env
+sudo sed -i "s/DB_USERNAME=.*/DB_USERNAME=${MYSQL_USER}/" .env
+sudo sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${MYSQL_PASS}/" .env
+
+# Get domain name
+read -p "Enter your domain name (e.g., example.com): " DOMAIN_NAME
+
+# Create Apache configuration file
+echo "Creating Apache configuration..."
+sudo tee /etc/apache2/sites-available/${DOMAIN_NAME}.conf << EOF
+<VirtualHost *:80>
+    ServerAdmin admin@${DOMAIN_NAME}
+    ServerName ${DOMAIN_NAME}
+    DocumentRoot /var/www/html/${REPO_NAME}/public
+
+    <Directory /var/www/html/${REPO_NAME}/public>
+        Options Indexes MultiViews FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog \${APACHE_LOG_DIR}/error.log
+    CustomLog \${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+EOF
+
+# Enable Apache rewrite module
+sudo a2enmod rewrite
+
+# Enable the new site
+sudo a2ensite ${DOMAIN_NAME}.conf
+
+# Disable default site
+sudo a2dissite 000-default.conf
+
+# Restart Apache
+sudo systemctl restart apache2
+
+# SSL Installation (optional)
+if confirm "Do you want to install SSL certificate?"; then
+    echo "WARNING: Before proceeding, ensure your domain's DNS A record points to this server's IP address."
+    if confirm "Have you configured the DNS settings?"; then
+        echo "Installing Certbot..."
+        sudo apt install -y certbot python3-certbot-apache
+        echo "Generating SSL certificate..."
+        sudo certbot --apache
+    else
+        echo "Please configure DNS settings first and run SSL installation later."
+    fi
 fi
 
 echo "Installation complete!"
