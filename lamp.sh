@@ -83,7 +83,14 @@ sudo apt install -y php${PHP_VERSION} \
     php${PHP_VERSION}-mbstring \
     php${PHP_VERSION}-zip \
     php${PHP_VERSION}-xml \
-    php${PHP_VERSION}-intl || error_exit "Failed to install PHP"
+    php${PHP_VERSION}-intl \
+    php${PHP_VERSION}-bcmath \
+    php${PHP_VERSION}-json \
+    php${PHP_VERSION}-readline \
+    php${PHP_VERSION}-soap \
+    php${PHP_VERSION}-fpm \
+    php${PHP_VERSION}-imagick \
+    php${PHP_VERSION}-ldap || error_exit "Failed to install PHP"
 
 # Install MySQL
 echo "Installing MySQL server..."
