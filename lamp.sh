@@ -102,8 +102,6 @@ sudo apt install -y php${PHP_VERSION} \
     php${PHP_VERSION}-xml \
     php${PHP_VERSION}-intl \
     php${PHP_VERSION}-bcmath \
-    php${PHP_VERSION}-json \
-    php${PHP_VERSION}-readline \
     php${PHP_VERSION}-soap \
     php${PHP_VERSION}-fpm \
     php${PHP_VERSION}-imagick \
