@@ -58,9 +58,26 @@ get_mysql_credentials() {
 echo "Updating system packages..."
 sudo apt update || error_exit "Failed to update system packages"
 
-# Install Apache
-echo "Installing Apache2..."
-sudo apt install -y apache2 || error_exit "Failed to install Apache2"
+# Select web server
+echo "Available web servers:"
+echo "1) Apache (default)"
+echo "2) Nginx"
+read -p "Select web server (1-2, default: 1): " web_server_choice
+web_server_choice=${web_server_choice:-1}
+
+case $web_server_choice in
+    1)
+        echo "Installing Apache2..."
+        sudo apt install -y apache2 || error_exit "Failed to install Apache2"
+        ;;
+    2)
+        echo "Installing Nginx..."
+        sudo apt install -y nginx || error_exit "Failed to install Nginx"
+        ;;
+    *)
+        error_exit "Invalid web server selected"
+        ;;
+esac
 
 # Add PHP repository and install PHP
 echo "Setting up PHP repository..."
@@ -135,24 +152,27 @@ select_node_version() {
     echo "Selected Node.js version: $NODE_VERSION"
 }
 
-# Install Node.js
-echo "Installing Node.js..."
-select_node_version
-cd ~
-curl -sL https://deb.nodesource.com/setup_${NODE_VERSION}.x -o nodesource_setup.sh
-sudo bash nodesource_setup.sh
-sudo apt install -y nodejs
-
-# Install Yarn (optional)
-if confirm "Do you want to install Yarn?"; then
-    echo "Installing Yarn..."
-    npm install --global yarn
+# Install Node.js (optional)
+if confirm "Do you want to install Node.js?"; then
+    echo "Installing Node.js..."
+    select_node_version
+    cd ~
+    curl -sL https://deb.nodesource.com/setup_${NODE_VERSION}.x -o nodesource_setup.sh
+    sudo bash nodesource_setup.sh
+    sudo apt install -y nodejs
 fi
 
-# Install PM2 (optional)
-if confirm "Do you want to install PM2?"; then
-    echo "Installing PM2..."
-    sudo npm install --global pm2
+# Install Yarn and PM2 (optional, only if Node.js is installed)
+if [ -x "$(command -v node)" ]; then
+    if confirm "Do you want to install Yarn?"; then
+        echo "Installing Yarn..."
+        npm install --global yarn
+    fi
+
+    if confirm "Do you want to install PM2?"; then
+        echo "Installing PM2..."
+        sudo npm install --global pm2
+    fi
 fi
 
 # Get project details
@@ -192,9 +212,11 @@ sudo sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${MYSQL_PASS}/" .env
 # Get domain name
 read -p "Enter your domain name (e.g., example.com): " DOMAIN_NAME
 
-# Create Apache configuration file
-echo "Creating Apache configuration..."
-sudo tee /etc/apache2/sites-available/${DOMAIN_NAME}.conf << EOF
+# Create web server configuration
+if [ "$web_server_choice" = "1" ]; then
+    # Apache configuration
+    echo "Creating Apache configuration..."
+    sudo tee /etc/apache2/sites-available/${DOMAIN_NAME}.conf << EOF
 <VirtualHost *:80>
     ServerAdmin admin@${DOMAIN_NAME}
     ServerName ${DOMAIN_NAME}
@@ -211,26 +233,83 @@ sudo tee /etc/apache2/sites-available/${DOMAIN_NAME}.conf << EOF
 </VirtualHost>
 EOF
 
-# Enable Apache rewrite module
-sudo a2enmod rewrite
+    # Enable Apache rewrite module
+    sudo a2enmod rewrite
 
-# Enable the new site
-sudo a2ensite ${DOMAIN_NAME}.conf
+    # Enable the new site
+    sudo a2ensite ${DOMAIN_NAME}.conf
 
-# Disable default site
-sudo a2dissite 000-default.conf
+    # Disable default site
+    sudo a2dissite 000-default.conf
 
-# Restart Apache
-sudo systemctl restart apache2
+    # Restart Apache
+    sudo systemctl restart apache2
+else
+    # Nginx configuration
+    echo "Creating Nginx configuration..."
+    sudo tee /etc/nginx/sites-available/${DOMAIN_NAME} << EOF
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN_NAME};
+    root /var/www/html/${REPO_NAME}/public;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    index index.php;
+
+    charset utf-8;
+
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+EOF
+
+    # Create symbolic link
+    sudo ln -s /etc/nginx/sites-available/${DOMAIN_NAME} /etc/nginx/sites-enabled/
+
+    # Remove default nginx site
+    sudo rm -f /etc/nginx/sites-enabled/default
+
+    # Test nginx configuration
+    sudo nginx -t
+
+    # Restart Nginx
+    sudo systemctl restart nginx
+fi
 
 # SSL Installation (optional)
 if confirm "Do you want to install SSL certificate?"; then
     echo "WARNING: Before proceeding, ensure your domain's DNS A record points to this server's IP address."
     if confirm "Have you configured the DNS settings?"; then
         echo "Installing Certbot..."
-        sudo apt install -y certbot python3-certbot-apache
-        echo "Generating SSL certificate..."
-        sudo certbot --apache
+        if [ "$web_server_choice" = "1" ]; then
+            sudo apt install -y certbot python3-certbot-apache
+            echo "Generating SSL certificate..."
+            sudo certbot --apache
+        else
+            sudo apt install -y certbot python3-certbot-nginx
+            echo "Generating SSL certificate..."
+            sudo certbot --nginx
+        fi
     else
         echo "Please configure DNS settings first and run SSL installation later."
     fi

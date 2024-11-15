@@ -1,7 +1,7 @@
 # SingleCommand
 
 # Setup a LAMP server on Ubuntu for Laravel in minutes
-## LAMP stack
+## LAMP stack (Can choose Nginx also)
 
 **GUIDE:** [Setting Up Your Web Server in Minutes: A Beginner's Guide](https://notes.sohag.pro/setting-up-your-web-server-in-minutes-a-beginners-guide)
 
