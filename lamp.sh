@@ -164,7 +164,7 @@ fi
 if [ -x "$(command -v node)" ]; then
     if confirm "Do you want to install Yarn?"; then
         echo "Installing Yarn..."
-        npm install --global yarn
+        sudo npm install --global yarn
     fi
 
     if confirm "Do you want to install PM2?"; then
