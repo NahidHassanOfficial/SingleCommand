@@ -203,9 +203,12 @@ sudo cp .env.example .env || error_exit "Failed to create .env file"
 sudo php artisan key:generate || error_exit "Failed to generate application key"
 
 # Update database credentials in .env
-sudo sed -i "s/DB_DATABASE=.*/DB_DATABASE=${DB_NAME}/" .env
-sudo sed -i "s/DB_USERNAME=.*/DB_USERNAME=${MYSQL_USER}/" .env
-sudo sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${MYSQL_PASS}/" .env
+sudo sed -i "s/DB_CONNECTION=.*/DB_CONNECTION=mysql/" .env
+sudo sed -i "s/# DB_HOST=.*/DB_HOST=127.0.0.1/" .env
+sudo sed -i "s/# DB_PORT=.*/DB_PORT=3306/" .env
+sudo sed -i "s/# DB_DATABASE=.*/DB_DATABASE=${DB_NAME}/" .env
+sudo sed -i "s/# DB_USERNAME=.*/DB_USERNAME=${MYSQL_USER}/" .env
+sudo sed -i "s/# DB_PASSWORD=.*/DB_PASSWORD=${MYSQL_PASS}/" .env
 
 # Get domain name
 read -p "Enter your domain name (e.g., example.com): " DOMAIN_NAME
