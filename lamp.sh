@@ -173,6 +173,19 @@ if [ -x "$(command -v node)" ]; then
     fi
 fi
 
+# Install supervisor and redis with mysql extension (optional)
+if confirm "Do you want to install supervisor & redis?"; then
+    echo "Installing Supervisor..."
+    sudo apt install -y supervisor
+
+    echo "Installing PHP MySQL extension..."
+    sudo apt-get install -y php8.4-mysql
+    
+    echo "Installing Redis..."
+    sudo apt install -y redis-server
+    sudo apt-get install -y php-redis
+fi
+
 # Get project details
 read -p "Enter GitHub repository URL: " REPO_URL
 
